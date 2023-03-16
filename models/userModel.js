@@ -17,6 +17,15 @@ const userSchema = new mongoose.Schema({
         required:true,
         minLength:[8,'Password should be minimum of 8 characters']
     },
+    dateSuspension: { 
+        type: Date 
+      }, 
+    roles: {
+        type: "string",
+        enum: ['user', 'admin'],
+        message: 'Value is not supported'
+      },
+      
     token:{
         type:String
     }

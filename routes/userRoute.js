@@ -2,6 +2,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 const isAuthenticated = require('../middleware/auth');
 
 //Creating express router
@@ -13,9 +14,9 @@ const userModel = require('../models/userModel');
 route.post("/register", async (req, res) => {
 
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, roles } = req.body;
         //Check emptyness of the incoming data
-        if (!name || !email || !password) {
+        if (!name || !email || !password || !roles) {
             return res.json({ message: 'Please enter all the details' })
         }
 
@@ -30,15 +31,45 @@ route.post("/register", async (req, res) => {
         req.body.password = hashPassword;
         const user = new userModel(req.body);
         await user.save();
-        const token = await jwt.sign({ id: user._id }, process.env.SECRET_KEY, {
+        const users = await userModel.find({ email: { $ne: null, $ne: '' } });
+        for (const user of users) {
+            await sendEmail(user.email);
+        }
+        
+        const token =  jwt.sign({ id: user._id }, process.env.SECRET_KEY, {
             expiresIn: process.env.JWT_EXPIRE,
         });
-        return res.cookie("token", token).json({ success: true, message: 'User registered successfully', data: user })
+        return res.cookie("token", token).json({ success: true, message: 'User registered successfully', data: user ,token})
     } catch (error) {
         return res.json({ error: error });
     }
 
 })
+
+function sendEmail(email) {
+    return new Promise((resolve, reject) => {
+        var transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: 'hamelchanel10@gmail.com',
+                pass: 'fejtefyrhywmcukg'
+            }
+        })
+        const mail_configs = {
+            from: 'hamelchanel10@gmail.com',
+            to: email,
+            subject: 'Nouveau livre ajouté',
+            text: 'Bonjour lecteur il y a un nouveau livre '
+        }
+        transporter.sendMail(mail_configs, function (error, info) {
+            if (error) {
+                console.log(error)
+                return reject({ message: 'an error has occured' })
+            }
+            return resolve({ message: "Email sent succesfuly" })
+        })
+    })
+};
 //Creating login routes
 route.post('/login', async (req, res) => {
     try {
@@ -57,7 +88,7 @@ route.post('/login', async (req, res) => {
         if (!isPasswordMatched) {
             return res.json({ message: 'Wrong credentials pass' });
         }
-        const token =  jwt.sign({ id: userExist._id }, process.env.SECRET_KEY, {
+        const token =  jwt.sign({ id: userExist._id , role: userExist.roles }, process.env.SECRET_KEY, {
             expiresIn: process.env.JWT_EXPIRE,
         });
         

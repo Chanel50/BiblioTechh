@@ -5,18 +5,20 @@ const userModel = require('../models/userModel');
 
 // Endpoint pour obtenir tous les emprunts
 exports.getEmprunts = async (req, res) => {
-try {
-    
-const emprunts = await empruntsModel.find().populate('id_livres id_utilisateur');
-res.status(200).json({ emprunts });
-} catch (err) {
-res.status(500).json({ message: err.message });
-}
+  try {
+    const emprunts = await empruntsModel.find().populate('id_livres').populate('id_utilisateur').populate('dateRetour');
+    res.status(200).json({ emprunts });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error getting emprunts' });
+  }
 };
+
+
 
 // Endpoint pour emprunter un livre
 exports.emprunterLivre = async (req, res) => {
-const { id_livres, id_utilisateur } = req.body;
+const { id_livres, id_utilisateur,dateRetour } = req.body;
 try {
 // Vérifiez si l'utilisateur a déjà emprunté 3 livres ce mois-ci
 const now = new Date();
@@ -37,8 +39,15 @@ return res.status(400).json({ message: "Ce livre n'est pas disponible." });
 const newEmprunt = new empruntsModel({
 id_livres: id_livres,
 id_utilisateur: id_utilisateur,
+dateRetour: dateRetour,
+
 });
 await newEmprunt.save();
+
+// add numEmprunt +1
+
+
+
 // Mettez à jour le statut de disponibilité du livre
 livres.disponible = false;
 await livres.save();
@@ -69,4 +78,36 @@ res.status(500).json({ message: err.message });
 }
 };
     
-    
+ // Controller pour renouveler un prêt unique
+exports.renouvelerEmprunt = async (req, res) => {
+    try {
+      const emprunt = await empruntsModel.findById(req.params.id);
+      if (!emprunt) {
+        return res.status(404).json({ error: 'Emprunt not found' });
+      }
+      // Vérifier si l'utilisateur a déjà renouvelé ce prêt
+      if (emprunt.rendu === true) {
+        return res.status(400).json({ error: 'This emprunt has already been returned' });
+      }
+      // Vérifier si l'utilisateur a déjà renouvelé ce prêt
+      if (emprunt.renouvele) {
+        return res.status(400).json({ error: 'This emprunt has already been renewed' });
+      }
+      // Vérifier si l'utilisateur a dépassé la date limite de retour
+      if (emprunt.dateRetour < Date.now()) {
+        const dateSuspension = new Date();
+        dateSuspension.setDate(dateSuspension.getDate() + (10*24*60*60*1000));
+        emprunt.dateSuspension = dateSuspension;
+        await emprunt.save();
+        return res.status(400).json({ error: 'This emprunt is already overdue and suspended' });
+      }
+      // Renouveler l'emprunt
+      emprunt.dateRetour.setDate(emprunt.dateRetour.getDate() + 7);
+      emprunt.renouvele = true;
+      await emprunt.save();
+      res.json({ message: 'Emprunt renewed successfully' });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  };   
+ 

@@ -11,4 +11,12 @@ router.get('/emprunts', empruntsController.getEmprunts);
 // Endpoint pour retourner un livre
 router.delete('/emprunts/:id_emprunt', empruntsController.rendreLivre);
 
+
+
+// Endpoint pour renouveler un prêt unique
+router.post('/emprunts/:id/renouveler', empruntsController.renouvelerEmprunt);
+
+
+
+
 module.exports = router;

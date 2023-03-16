@@ -12,13 +12,21 @@ var empruntsSchema = new mongoose.Schema({
         },
         id_livres:{
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'livresModel'
+            ref: 'livres'
         },
         id_utilisateur: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'userModel'
+            ref: 'user'
         },
-       
+         dateRetour: { 
+          type: Date, 
+          required: true 
+        },
+         
+        rendu: {
+          type: Boolean,
+          default: false
+        }
     
       
 });
